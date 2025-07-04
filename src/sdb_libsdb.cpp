@@ -3,4 +3,4 @@
 
 using namespace std;
 
-void sdb::say_hello () { cout << "Hello, sdb!" << endl; }
+void sdb::say_hello() { cout << "Hello, sdb!" << endl; }

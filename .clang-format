@@ -10,7 +10,7 @@ AllowShortFunctionsOnASingleLine: All
 # AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
-BreakBeforeBraces: Custom
+BreakBeforeBraces: Allman
 BraceWrapping:
   AfterClass:      true
   AfterControlStatement: true
@@ -36,6 +36,6 @@ PenaltyExcessCharacter: 100
 PenaltyReturnTypeOnItsOwnLine: 1
 PointerAlignment: Left
 SortIncludes: false
-SpaceBeforeParens: Always
+SpaceBeforeParens: ControlStatements
 SpacesInContainerLiterals: true
 Standard:        Auto
