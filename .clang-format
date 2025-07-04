@@ -3,9 +3,7 @@ AlignAfterOpenBracket: Align
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: true
 AllowShortCaseLabelsOnASingleLine: true
-AllowShortFunctionsOnASingleLine: All
-# Uncommenting these lines will sometimes result in lines following an
-# if(){} or for(){} block being attached to the end of the block.
+AllowShortFunctionsOnASingleLine: false
 # AllowShortIfStatementsOnASingleLine: true
 # AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: None
