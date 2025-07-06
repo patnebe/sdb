@@ -11,6 +11,7 @@
 #include <editline/readline.h>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace
 {
@@ -18,9 +19,15 @@ using namespace sdb;
 
 /**
  * This is thrown when there's an error attaching
- * to a process
+ * to a process.
  */
 class ProcessAttachErrror : std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+class CommandError : std::runtime_error
 {
 public:
   using std::runtime_error::runtime_error;
@@ -35,6 +42,7 @@ std::string CommandOptions::CONTINUE = "continue";
 pid_t attach_to_running_proc(const char** argv)
 {
   pid_t pid = std::atoi(argv[2]);
+
   if (pid <= 0)
   {
     const std::string err("Invalid pid");
@@ -95,15 +103,42 @@ pid_t attach(int argc, const char** argv)
   return pid;
 }
 
+/**
+ * Resume the debugee process
+ */
 void resume(pid_t pid)
 {
-  if (ptrace(PTRACE_CONT, pid, nullptr, nullptr) < 0)
+  if (int rc = ptrace(PTRACE_CONT, pid, nullptr, nullptr); rc < 0)
   {
-    std::cerr << "Unable to continue" << std::endl;
+    // TODO: Track the state of the process so we don't
+    // deliver the continue signal if the process is
+    // already running.
+    std::cerr << "Unable to continue, rc=" << rc << std::endl;
     std::exit(-1);
   }
 }
 
+/**
+ * Suspend execution of the current process
+ * until the process with the specified pid
+ * changes state. If the child process has changed
+ * state, then this returns immediately.
+ */
+void wait_on_signal(pid_t pid)
+{
+  int wait_status = 0;
+  int options = 0;
+  if (waitpid(pid, &wait_status, options) < 0)
+  {
+    std::perror("waitpid failed");
+    std::exit(-1);
+  }
+}
+
+/**
+ * Parse the command to be executed and dispatch it
+ * to the process.
+ */
 void handle_command(pid_t pid, std::string_view line)
 {
   std::cout << "pid = " << pid << ", command = " << line << std::endl;
@@ -116,6 +151,18 @@ void handle_command(pid_t pid, std::string_view line)
   if (command == CommandOptions::CONTINUE)
   {
     resume(pid);
+
+    // Todo: This blocks the main thread
+    // once the process has continued. This probably
+    // should not be here
+    // wait_on_signal(pid);
+  }
+  else
+  {
+    std::cout << "-> " << command << std::endl;
+    // std::stringstream ss;
+    // ss << "Invalid command=" << command << " provided";
+    // throw CommandError(std::move(ss).str());
   }
 }
 
@@ -130,13 +177,7 @@ int main(int argc, const char** argv)
   }
 
   pid_t pid = attach(argc, argv);
-
-  int wait_status = 0;
-  int options = 0;
-  if (waitpid(pid, &wait_status, options) < 0)
-  {
-    std::perror("waitpid failed");
-  }
+  wait_on_signal(pid);
 
   char* line = nullptr;
   while ((line = readline("sdb> ")) != nullptr)
@@ -159,6 +200,8 @@ int main(int argc, const char** argv)
 
     if (!line_str.empty())
     {
+      // TODO: In the case where continue is called
+      // and this process has been suspended
       handle_command(pid, line_str);
     }
   }
