@@ -14,91 +14,111 @@
 
 namespace
 {
-  using namespace sdb;
+using namespace sdb;
 
-  /**
-   * This is thrown when there's an error attaching
-   * to a process
-   */
-  class ProcessAttachErrror : std::runtime_error
+/**
+ * This is thrown when there's an error attaching
+ * to a process
+ */
+class ProcessAttachErrror : std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+struct CommandOptions
+{
+  static std::string CONTINUE;
+};
+std::string CommandOptions::CONTINUE = "continue";
+
+pid_t attach_to_running_proc(const char** argv)
+{
+  pid_t pid = std::atoi(argv[2]);
+  if (pid <= 0)
   {
-  public:
-    using std::runtime_error::runtime_error;
-  };
-
-  pid_t attach_to_running_proc(const char** argv)
-  {
-    pid_t pid = std::atoi(argv[2]);
-    if (pid <= 0)
-    {
-      const std::string err("Invalid pid");
-      std::perror(err.c_str());
-      throw std::invalid_argument(err);
-    }
-
-    if (ptrace(PTRACE_ATTACH, pid, /*addr=*/nullptr, /*data=*/nullptr) < 0)
-    {
-      const std::string err("Failed to attach to process");
-      std::perror(err.c_str());
-      throw ProcessAttachErrror(err);
-    }
-
-    return pid;
+    const std::string err("Invalid pid");
+    std::perror(err.c_str());
+    throw std::invalid_argument(err);
   }
 
-  pid_t launch_new_proc_and_attach(const char** argv)
+  if (ptrace(PTRACE_ATTACH, pid, /*addr=*/nullptr, /*data=*/nullptr) < 0)
   {
-    pid_t pid = 0;
-    const char* program_path = argv[1];
-    if ((pid = fork()) < 0)
-    {
-      std::perror("fork failed");
-      throw ProcessAttachErrror("fork failed");
-    }
-
-    if (pid == 0)
-    {
-      // In child process
-      // Execute debugee
-      if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
-      {
-        std::perror("Tracing failed");
-        throw ProcessAttachErrror("Tracing failed");
-      }
-      if (execlp(program_path, program_path, nullptr) < 0)
-      {
-        std::perror("Exec failed");
-        throw ProcessAttachErrror("Exec failed");
-      }
-    }
-    return pid;
+    const std::string err("Failed to attach to process");
+    std::perror(err.c_str());
+    throw ProcessAttachErrror(err);
   }
 
-  pid_t attach(int argc, const char** argv)
-  {
-    pid_t pid = 0;
+  return pid;
+}
 
-    if (argc == 3 && argv[1] == std::string("-p"))
-    {
-      pid = attach_to_running_proc(argv);
-    }
-    else
-    {
-      pid = launch_new_proc_and_attach(argv);
-    }
-    return pid;
+pid_t launch_new_proc_and_attach(const char** argv)
+{
+  pid_t pid = 0;
+  const char* program_path = argv[1];
+  if ((pid = fork()) < 0)
+  {
+    std::perror("fork failed");
+    throw ProcessAttachErrror("fork failed");
   }
 
-  void handle_command(pid_t pid, std::string_view line)
+  if (pid == 0)
   {
-    (void)pid;
-    std::cout << "pid = " << pid << ", command = " << line << std::endl;
-
-    // What commands do we wanna support
-    //
-    static const std::string delimiter("");
-    auto args = StringUtil::split(line, delimiter);
+    // In child process
+    // Execute debugee
+    if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
+    {
+      std::perror("Tracing failed");
+      throw ProcessAttachErrror("Tracing failed");
+    }
+    if (execlp(program_path, program_path, nullptr) < 0)
+    {
+      std::perror("Exec failed");
+      throw ProcessAttachErrror("Exec failed");
+    }
   }
+  return pid;
+}
+
+pid_t attach(int argc, const char** argv)
+{
+  pid_t pid = 0;
+
+  if (argc == 3 && argv[1] == std::string("-p"))
+  {
+    pid = attach_to_running_proc(argv);
+  }
+  else
+  {
+    pid = launch_new_proc_and_attach(argv);
+  }
+  return pid;
+}
+
+void resume(pid_t pid)
+{
+  if (ptrace(PTRACE_CONT, pid, nullptr, nullptr) < 0)
+  {
+    std::cerr << "Unable to continue" << std::endl;
+    std::exit(-1);
+  }
+}
+
+void handle_command(pid_t pid, std::string_view line)
+{
+  std::cout << "pid = " << pid << ", command = " << line << std::endl;
+
+  // What commands do we wanna support
+  static const std::string delimiter(" ");
+  auto args = StringUtil::split(line, delimiter);
+  const std::string& command = args[0];
+
+  if (command == CommandOptions::CONTINUE)
+  {
+    resume(pid);
+  }
+}
+
 } // namespace
 
 int main(int argc, const char** argv)
