@@ -1,4 +1,5 @@
 #include <libsdb/sdb_libsdb.h>
+#include <libsdb/sdb_process.h>
 #include <libsdb/sdb_stringutil.h>
 
 #include <iostream>
@@ -11,94 +12,92 @@
 #include <editline/readline.h>
 #include <sstream>
 #include <string>
+#include <utility>
 
 namespace
 {
-  using namespace sdb;
+using namespace sdb;
 
-  /**
-   * This is thrown when there's an error attaching
-   * to a process
-   */
-  class ProcessAttachErrror : std::runtime_error
+class CommandError : std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+struct CommandOptions
+{
+  static std::string CONTINUE;
+};
+std::string CommandOptions::CONTINUE = "continue";
+
+ProcessUPtr attach_to_running_proc(const char** argv)
+{
+  pid_t pid = std::atoi(argv[2]);
+
+  if (pid <= 0)
   {
-  public:
-    using std::runtime_error::runtime_error;
-  };
-
-  pid_t attach_to_running_proc(const char** argv)
-  {
-    pid_t pid = std::atoi(argv[2]);
-    if (pid <= 0)
-    {
-      const std::string err("Invalid pid");
-      std::perror(err.c_str());
-      throw std::invalid_argument(err);
-    }
-
-    if (ptrace(PTRACE_ATTACH, pid, /*addr=*/nullptr, /*data=*/nullptr) < 0)
-    {
-      const std::string err("Failed to attach to process");
-      std::perror(err.c_str());
-      throw ProcessAttachErrror(err);
-    }
-
-    return pid;
+    const std::string err("Invalid pid");
+    std::perror(err.c_str());
+    throw std::invalid_argument(err);
   }
 
-  pid_t launch_new_proc_and_attach(const char** argv)
+  return Process::attach(pid);
+}
+
+ProcessUPtr launch_new_proc_and_attach(const char** argv)
+{
+  const char* program_path = argv[1];
+  const std::filesystem::path path(program_path);
+
+  return Process::launch(path);
+}
+
+ProcessUPtr attach(int argc, const char** argv)
+{
+  ProcessUPtr process = nullptr;
+  if (argc == 3 && argv[1] == std::string("-p"))
   {
-    pid_t pid = 0;
-    const char* program_path = argv[1];
-    if ((pid = fork()) < 0)
-    {
-      std::perror("fork failed");
-      throw ProcessAttachErrror("fork failed");
-    }
-
-    if (pid == 0)
-    {
-      // In child process
-      // Execute debugee
-      if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
-      {
-        std::perror("Tracing failed");
-        throw ProcessAttachErrror("Tracing failed");
-      }
-      if (execlp(program_path, program_path, nullptr) < 0)
-      {
-        std::perror("Exec failed");
-        throw ProcessAttachErrror("Exec failed");
-      }
-    }
-    return pid;
+    process = attach_to_running_proc(argv);
   }
-
-  pid_t attach(int argc, const char** argv)
+  else
   {
-    pid_t pid = 0;
-
-    if (argc == 3 && argv[1] == std::string("-p"))
-    {
-      pid = attach_to_running_proc(argv);
-    }
-    else
-    {
-      pid = launch_new_proc_and_attach(argv);
-    }
-    return pid;
+    process = launch_new_proc_and_attach(argv);
   }
+  return process;
+}
 
-  void handle_command(pid_t pid, std::string_view line)
+/**
+ * Parse the command to be executed and dispatch it
+ * to the process.
+ */
+void handle_command(const ProcessUPtr& process_uptr, std::string_view line)
+{
+  std::cout << "pid = " << process_uptr->pid() << ", command = " << line
+            << std::endl;
+
+  // What commands do we wanna support
+  static const std::string delimiter(" ");
+  auto args = StringUtil::split(line, delimiter);
+  const std::string& command = args[0];
+
+  if (command == CommandOptions::CONTINUE)
   {
-    (void)pid;
-    std::cout << "pid = " << pid << ", command = " << line << std::endl;
+    process_uptr->resume();
 
-    // What commands do we wanna support
-    //
-    static const std::string delimiter("");
-    auto args = StringUtil::split(line, delimiter);
+    // Todo: This blocks the main thread
+    // once the process has continued. This probably
+    // should not be here
+    // wait_on_signal(pid);
   }
+  else
+  {
+    std::cout << "-> " << command << std::endl;
+    // std::stringstream ss;
+    // ss << "Invalid command=" << command << " provided";
+    // throw CommandError(std::move(ss).str());
+  }
+}
+
 } // namespace
 
 int main(int argc, const char** argv)
@@ -109,14 +108,8 @@ int main(int argc, const char** argv)
     return -1;
   }
 
-  pid_t pid = attach(argc, argv);
-
-  int wait_status = 0;
-  int options = 0;
-  if (waitpid(pid, &wait_status, options) < 0)
-  {
-    std::perror("waitpid failed");
-  }
+  const ProcessUPtr inferiorProc = attach(argc, argv);
+  inferiorProc->wait_on_signal();
 
   char* line = nullptr;
   while ((line = readline("sdb> ")) != nullptr)
@@ -139,7 +132,9 @@ int main(int argc, const char** argv)
 
     if (!line_str.empty())
     {
-      handle_command(pid, line_str);
+      // TODO: In the case where continue is called
+      // and this process has been suspended
+      handle_command(inferiorProc, line_str);
     }
   }
 }
