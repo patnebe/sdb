@@ -10,6 +10,9 @@ if [ ! -d "$VCPKG_ROOT" ]; then
     cd "$VCPKG_ROOT" && ./bootstrap-vcpkg.sh
 fi
 
+# Install vcpkg dependencies from manifest
+"$VCPKG_ROOT"/vcpkg install
+
 # Install system dependencies (generic package manager detection)
 if command -v dnf &> /dev/null; then
     sudo dnf install -y cmake gcc-c++ libedit-devel
