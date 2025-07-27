@@ -5,6 +5,7 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <utility>
 
 namespace sdb
 {
@@ -16,9 +17,30 @@ Process::Process(pid_t pid, bool cleanup_on_exit)
 
 Process::~Process()
 {
+  if (d_pid == 0)
+  {
+    return;
+  }
+
+  // Stop the process
+  if (d_state == ProcessState::e_RUNNING)
+  {
+    kill(d_pid, SIGSTOP);
+    wait_on_signal();
+  }
+
+  // Detach
+  if (ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr) < 0)
+  {
+    std::perror("Failed to attach to process");
+  }
+  kill(d_pid, SIGCONT);
+
+  // Cleanup
   if (d_cleanup_on_exit)
   {
     kill(d_pid, SIGKILL);
+    wait_on_signal();
   }
 }
 
@@ -31,7 +53,9 @@ ProcessUPtr Process::attach(pid_t pid)
     throw ProcessAttachErrror(err);
   }
   constexpr bool cleanup_on_exit = false;
-  return std::unique_ptr<Process>(new Process(pid, cleanup_on_exit));
+  auto proc = std::unique_ptr<Process>(new Process(pid, cleanup_on_exit));
+  proc->wait_on_signal();
+  return proc;
 }
 
 ProcessUPtr Process::launch(std::filesystem::path path)
@@ -60,19 +84,28 @@ ProcessUPtr Process::launch(std::filesystem::path path)
   }
 
   constexpr bool cleanup_on_exit = true;
-  return std::unique_ptr<Process>(new Process(pid, cleanup_on_exit));
+  auto proc = std::unique_ptr<Process>(new Process(pid, cleanup_on_exit));
+  proc->wait_on_signal();
+  return proc;
 }
 
 void Process::resume()
 {
-  if (int rc = ptrace(PTRACE_CONT, d_pid, nullptr, nullptr); rc < 0)
+  switch (d_state)
   {
-    // TODO: Track the state of the process so we don't
-    // deliver the continue signal if the process is
-    // already running.
-    std::cerr << "Unable to continue, rc=" << rc << std::endl;
-    std::exit(-1);
+    case ProcessState::e_RUNNING:
+      std::cout << "Process already running" << std::endl;
+      return;
+    case ProcessState::e_STOPPED:
+      if (int rc = ptrace(PTRACE_CONT, d_pid, nullptr, nullptr); rc < 0)
+      {
+        std::cerr << "Unable to continue, rc=" << rc << std::endl;
+        std::exit(-1);
+      }
+      d_state = ProcessState::e_RUNNING;
+      return;
   }
+  std::unreachable();
 }
 
 void Process::wait_on_signal()

@@ -1,4 +1,3 @@
-#include <libsdb/sdb_libsdb.h>
 #include <libsdb/sdb_process.h>
 #include <libsdb/sdb_stringutil.h>
 
@@ -109,7 +108,6 @@ int main(int argc, const char** argv)
   }
 
   const ProcessUPtr inferiorProc = attach(argc, argv);
-  inferiorProc->wait_on_signal();
 
   char* line = nullptr;
   while ((line = readline("sdb> ")) != nullptr)
