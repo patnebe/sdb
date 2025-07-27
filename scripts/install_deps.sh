@@ -10,7 +10,7 @@ if [ ! -d "$VCPKG_ROOT" ]; then
     cd "$VCPKG_ROOT" && ./bootstrap-vcpkg.sh
 fi
 
-# Install system dependencies
+# Install system dependencies (generic package manager detection)
 if command -v dnf &> /dev/null; then
     sudo dnf install -y cmake gcc-c++ libedit-devel
 elif command -v yum &> /dev/null; then
