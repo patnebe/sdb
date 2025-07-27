@@ -3,14 +3,14 @@
 all: build test
 
 build:
-	cmake -S . -B build
+	cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=$(VCPKG_ROOT)/scripts/buildsystems/vcpkg.cmake
 	cmake --build build
 
 test:
 	ctest --test-dir build
 
 deps:
-	sudo apt-get update && sudo apt-get install -y cmake g++ catch2 libedit-dev
+	bash scripts/install_deps.sh
 
 format:
 	clang-format -i */*/*.h
