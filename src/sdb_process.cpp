@@ -93,17 +93,17 @@ void Process::resume()
 {
   switch (d_state)
   {
-  case ProcessState::e_RUNNING:
-    std::cout << "Process already running" << std::endl;
-    return;
-  case ProcessState::e_STOPPED:
-    if (int rc = ptrace(PTRACE_CONT, d_pid, nullptr, nullptr); rc < 0)
-    {
-      std::cerr << "Unable to continue, rc=" << rc << std::endl;
-      std::exit(-1);
-    }
-    d_state = ProcessState::e_RUNNING;
-    return;
+    case ProcessState::e_RUNNING:
+      std::cout << "Process already running" << std::endl;
+      return;
+    case ProcessState::e_STOPPED:
+      if (int rc = ptrace(PTRACE_CONT, d_pid, nullptr, nullptr); rc < 0)
+      {
+        std::cerr << "Unable to continue, rc=" << rc << std::endl;
+        std::exit(-1);
+      }
+      d_state = ProcessState::e_RUNNING;
+      return;
   }
   std::unreachable();
 }
