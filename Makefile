@@ -10,7 +10,7 @@ test:
 	ctest --test-dir build
 
 deps:
-	sudo apt-get update && sudo apt-get install -y cmake g++ catch2
+	sudo apt-get update && sudo apt-get install -y cmake g++ catch2 libedit-dev
 
 format:
 	clang-format -i */*/*.h
