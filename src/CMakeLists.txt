@@ -1,4 +1,4 @@
-add_library(libsdb sdb_stringutil.cpp sdb_process.cpp)
+add_library(libsdb sdb_command.cpp sdb_stringutil.cpp sdb_process.cpp sdb_process_state.cpp)
 add_library(sdb::libsdb ALIAS libsdb)
 
 set_target_properties(

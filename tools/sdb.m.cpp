@@ -1,5 +1,5 @@
+#include <libsdb/sdb_command.h>
 #include <libsdb/sdb_process.h>
-#include <libsdb/sdb_stringutil.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -16,18 +16,6 @@
 namespace
 {
 using namespace sdb;
-
-class CommandError : std::runtime_error
-{
-public:
-  using std::runtime_error::runtime_error;
-};
-
-struct CommandOptions
-{
-  static std::string CONTINUE;
-};
-std::string CommandOptions::CONTINUE = "continue";
 
 ProcessUPtr attach_to_running_proc(const char** argv)
 {
@@ -65,53 +53,37 @@ ProcessUPtr attach(int argc, const char** argv)
   return process;
 }
 
-/**
- * Parse the command to be executed and dispatch it
- * to the process.
- */
-void handle_command(const ProcessUPtr& process_uptr, std::string_view line)
+void handle_command(const ProcessUPtr& process_uptr, const Command& command)
 {
-  std::cout << "pid = " << process_uptr->pid() << ", command = " << line
-            << std::endl;
-
-  // What commands do we wanna support
-  static const std::string delimiter(" ");
-  auto args = StringUtil::split(line, delimiter);
-  const std::string& command = args[0];
-
-  if (command == CommandOptions::CONTINUE)
+  switch (command.d_type)
   {
-    process_uptr->resume();
+    case CommandType::e_RUN:
+      if (process_uptr->isAlive())
+      {
+        std::cout << "Inferior process is already running" << std::endl;
+      }
+      return;
 
-    // Todo: This blocks the main thread
-    // once the process has continued. This probably
-    // should not be here
-    // wait_on_signal(pid);
-  }
-  else
-  {
-    std::cout << "-> " << command << std::endl;
-    // std::stringstream ss;
-    // ss << "Invalid command=" << command << " provided";
-    // throw CommandError(std::move(ss).str());
+    case CommandType::e_CONTINUE:
+      process_uptr->resume();
+      return;
+
+    default:
+      std::cout << "Unknown command: " << command.d_commandArgs[0]
+                << std::endl;
   }
 }
 
-} // namespace
-
-int main(int argc, const char** argv)
+void debug(const ProcessUPtr& inferiorProc)
 {
-  if (argc == 1)
-  {
-    std::cerr << "No arguments given\n";
-    return -1;
-  }
-
-  const ProcessUPtr inferiorProc = attach(argc, argv);
-
   char* line = nullptr;
-  while ((line = readline("sdb> ")) != nullptr)
+  while (true)
   {
+    if ((line = readline("sdb> ")) == nullptr)
+    {
+      continue;
+    }
+
     std::string line_str;
     if (line == std::string_view(""))
     {
@@ -130,9 +102,35 @@ int main(int argc, const char** argv)
 
     if (!line_str.empty())
     {
-      // TODO: In the case where continue is called
-      // and this process has been suspended
-      handle_command(inferiorProc, line_str);
+      const auto command = Command::parse(line_str);
+      switch (command.d_type)
+      {
+        case CommandType::e_QUIT:
+          return;
+        default:
+          handle_command(inferiorProc, command);
+      }
     }
+  }
+}
+
+} // namespace
+
+int main(int argc, const char** argv)
+{
+  if (argc == 1)
+  {
+    std::cerr << "No arguments given\n";
+    return -1;
+  }
+
+  try
+  {
+    const ProcessUPtr inferiorProc = attach(argc, argv);
+    debug(inferiorProc);
+  }
+  catch (const std::runtime_error& err)
+  {
+    std::perror(err.what());
   }
 }
