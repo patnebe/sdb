@@ -34,8 +34,7 @@ private:
 private:
   const pid_t d_pid;
 
-  // TODO: Set this properly
-  const ProcessState d_state;
+  ProcessState d_state;
   const bool d_cleanup_on_exit;
 
 public:

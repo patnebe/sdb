@@ -1,4 +1,4 @@
-add_library(libsdb sdb_libsdb.cpp sdb_stringutil.cpp sdb_process.cpp)
+add_library(libsdb sdb_stringutil.cpp sdb_process.cpp)
 add_library(sdb::libsdb ALIAS libsdb)
 
 set_target_properties(
@@ -7,7 +7,7 @@ set_target_properties(
 )
 
 target_compile_definitions(
-    libsdb PUBLIC cxx_std_17
+    libsdb PUBLIC cxx_std_23
 )
 target_include_directories(
     libsdb
