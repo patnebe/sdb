@@ -1,4 +1,3 @@
-#include <libsdb/sdb_libsdb.h>
 #include <libsdb/sdb_process.h>
 #include <libsdb/sdb_stringutil.h>
 
