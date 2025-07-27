@@ -23,7 +23,6 @@ Process::~Process()
     return;
   }
 
-  // Stop the process
   if (!isAlive())
   {
     return;
@@ -43,7 +42,6 @@ Process::~Process()
     std::cout << "Unable to detach from process, rc=" << rc << std::endl;
     return;
   }
-
   kill(d_pid, SIGCONT);
 
   // Cleanup

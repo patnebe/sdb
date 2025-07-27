@@ -6,28 +6,25 @@ namespace sdb
 namespace
 {
 
-bool isCommandType(const auto& src, const auto& expectedOption1,
-                   const auto& expectedOption2)
+template <typename... Args>
+bool isCommandType(std::string_view commandType, Args&&... options)
 {
-  return (src == expectedOption1) || (src == expectedOption2);
+  return ((commandType == options) || ...);
 }
 
 CommandType parseCommandType(const std::string& commandTypeStr)
 {
-  if (isCommandType(commandTypeStr, std::string_view("continue"),
-                    std::string_view("c")))
+  if (isCommandType(commandTypeStr, "continue", "c"))
   {
     return CommandType::e_CONTINUE;
   }
 
-  if (isCommandType(commandTypeStr, std::string_view("quit"),
-                    std::string_view("q")))
+  if (isCommandType(commandTypeStr, "quit", "q"))
   {
     return CommandType::e_QUIT;
   }
 
-  if (isCommandType(commandTypeStr, std::string_view("run"),
-                    std::string_view("r")))
+  if (isCommandType(commandTypeStr, "run", "r"))
   {
     return CommandType::e_RUN;
   }
