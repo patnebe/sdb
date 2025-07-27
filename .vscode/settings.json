@@ -69,7 +69,9 @@
         "text_encoding": "cpp",
         "thread": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "csignal": "cpp",
+        "list": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }

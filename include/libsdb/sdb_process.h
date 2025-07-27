@@ -51,10 +51,11 @@ public:
    * changes state. If the "inferior" process has
    * changed state, this returns immediately.
    */
-  void wait_on_signal();
+  void waitOnSignal();
 
   pid_t pid() const;
   ProcessState state() const;
+  bool isAlive() const;
 
 private:
   Process() = delete;
@@ -71,6 +72,12 @@ inline pid_t Process::pid() const
 inline ProcessState Process::state() const
 {
   return d_state;
+}
+
+inline bool Process::isAlive() const
+{
+  return d_state != ProcessState::e_EXITED
+         && d_state != ProcessState::e_TERMINATED;
 }
 }
 

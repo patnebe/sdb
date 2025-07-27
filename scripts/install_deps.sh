@@ -12,8 +12,3 @@ else
     echo "No supported package manager found (dnf, yum, apt-get). Please install dependencies manually." >&2
     exit 1
 fi
-
-git clone https://github.com/catchorg/Catch2.git
-cd Catch2
-cmake -Bbuild -H. -DBUILD_TESTING=OFF
-sudo cmake --build build/ --target install

@@ -1,4 +1,5 @@
-int main() {
-    // No tests implemented. Placeholder main.
-    return 0;
+int main()
+{
+  // No tests implemented. Placeholder main.
+  return 0;
 }

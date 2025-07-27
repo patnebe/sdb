@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <signal.h>
+#include <sstream>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -23,24 +24,33 @@ Process::~Process()
   }
 
   // Stop the process
+  if (!isAlive())
+  {
+    return;
+  }
+
   if (d_state == ProcessState::e_RUNNING)
   {
     kill(d_pid, SIGSTOP);
-    wait_on_signal();
+    waitOnSignal();
   }
 
   // Detach
-  if (ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr) < 0)
+  if (auto rc
+      = ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr);
+      rc < 0)
   {
-    std::perror("Failed to attach to process");
+    std::cout << "Unable to detach from process, rc=" << rc << std::endl;
+    return;
   }
+
   kill(d_pid, SIGCONT);
 
   // Cleanup
   if (d_cleanup_on_exit)
   {
     kill(d_pid, SIGKILL);
-    wait_on_signal();
+    waitOnSignal();
   }
 }
 
@@ -52,9 +62,9 @@ ProcessUPtr Process::attach(pid_t pid)
     std::perror(err.c_str());
     throw ProcessAttachErrror(err);
   }
-  constexpr bool cleanup_on_exit = false;
-  auto proc = std::unique_ptr<Process>(new Process(pid, cleanup_on_exit));
-  proc->wait_on_signal();
+  constexpr bool cleanupOnExit = false;
+  auto proc = std::unique_ptr<Process>(new Process(pid, cleanupOnExit));
+  proc->waitOnSignal();
   return proc;
 }
 
@@ -83,9 +93,9 @@ ProcessUPtr Process::launch(std::filesystem::path path)
     }
   }
 
-  constexpr bool cleanup_on_exit = true;
-  auto proc = std::unique_ptr<Process>(new Process(pid, cleanup_on_exit));
-  proc->wait_on_signal();
+  constexpr bool cleanupOnExit = true;
+  auto proc = std::unique_ptr<Process>(new Process(pid, cleanupOnExit));
+  proc->waitOnSignal();
   return proc;
 }
 
@@ -94,8 +104,8 @@ void Process::resume()
   switch (d_state)
   {
     case ProcessState::e_RUNNING:
-      std::cout << "Process already running" << std::endl;
-      return;
+      std::cout << "Inferior process already running" << std::endl;
+      break;
     case ProcessState::e_STOPPED:
       if (int rc = ptrace(PTRACE_CONT, d_pid, nullptr, nullptr); rc < 0)
       {
@@ -103,19 +113,35 @@ void Process::resume()
         std::exit(-1);
       }
       d_state = ProcessState::e_RUNNING;
-      return;
+      waitOnSignal();
+      break;
+    default:
+      std::cout << "Inferior process is not running" << std::endl;
   }
-  std::unreachable();
 }
 
-void Process::wait_on_signal()
+void Process::waitOnSignal()
 {
-  int wait_status = 0;
+  int waitStatus = 0;
   int options = 0;
-  if (waitpid(d_pid, &wait_status, options) < 0)
+  if (waitpid(d_pid, &waitStatus, options) < 0)
   {
     std::perror("waitpid failed");
     std::exit(-1);
+  }
+
+  if (WIFEXITED(waitStatus))
+  {
+    std::cout << "Inferior exited normally." << std::endl;
+    d_state = ProcessState::e_EXITED;
+    return;
+  }
+
+  if (WIFSIGNALED(waitStatus))
+  {
+    std::cout << "Inferior terminated by signal." << std::endl;
+    d_state = ProcessState::e_TERMINATED;
+    return;
   }
 }
 }
