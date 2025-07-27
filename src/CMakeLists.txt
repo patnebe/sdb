@@ -6,9 +6,6 @@ set_target_properties(
     PROPERTIES OUTPUT_NAME sdb
 )
 
-target_compile_definitions(
-    libsdb PUBLIC cxx_std_23
-)
 target_include_directories(
     libsdb
     # PRIVATE include
