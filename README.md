@@ -1,5 +1,6 @@
 sdb
 ===========
+[![C/C++ CI](https://github.com/patnebe/sdb/actions/workflows/build.yml/badge.svg)](https://github.com/patnebe/sdb/actions/workflows/build.yml)
 
 sdb is an x86 debugger written in C++ 23. 
 
