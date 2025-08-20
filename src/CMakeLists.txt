@@ -8,8 +8,6 @@ set_target_properties(
 
 target_include_directories(
     libsdb
-    # PRIVATE include
-    # PUBLIC $(CMAKE_SOURCE_DIR)/include
     PUBLIC
         $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>

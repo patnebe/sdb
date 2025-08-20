@@ -1,11 +1,19 @@
-add_executable(tests
-    tests.cpp
+add_executable(sdb.u.t
+    sdb_unit.t.cpp
 )
 
-target_link_libraries(tests
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+)
+FetchContent_MakeAvailable(googletest)
+
+target_link_libraries(sdb.u.t
     PRIVATE
     sdb::libsdb
+    GTest::gtest_main
 )
 
-include(CTest)
-add_test(NAME sdb_tests COMMAND tests)
+include(GoogleTest)
+gtest_discover_tests(sdb.u.t)
