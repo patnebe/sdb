@@ -1,5 +1,7 @@
 #include <libsdb/sdb_process.h>
 
+#include <libsdb/sdb_pipe.h>
+
 #include <iostream>
 #include <signal.h>
 #include <sstream>
@@ -7,9 +9,23 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <utility>
+#include <vector>
 
 namespace sdb
 {
+
+namespace
+{
+
+void notifyParentThenExit(Pipe& errorPipe, std::string_view errorMsg)
+{
+  std::string err(errorMsg);
+  errorPipe.write(reinterpret_cast<std::byte*>(err.data()), err.size());
+  exit(-1);
+}
+
+} // namespace
+
 Process::Process(pid_t pid, bool cleanup_on_exit)
     : d_pid(pid), d_state(ProcessState::e_STOPPED),
       d_cleanup_on_exit(cleanup_on_exit)
@@ -58,7 +74,7 @@ ProcessUPtr Process::attach(pid_t pid)
   {
     const std::string err("Failed to attach to process");
     std::perror(err.c_str());
-    throw ProcessAttachErrror(err);
+    throw ProcessAttachError(err);
   }
   constexpr bool cleanupOnExit = false;
   auto proc = std::unique_ptr<Process>(new Process(pid, cleanupOnExit));
@@ -68,27 +84,45 @@ ProcessUPtr Process::attach(pid_t pid)
 
 ProcessUPtr Process::launch(std::filesystem::path path)
 {
+  Pipe errorPipe(true /* closeOnExec */);
+
   pid_t pid = 0;
   if ((pid = fork()) < 0)
   {
     std::perror("fork failed");
-    throw ProcessAttachErrror("fork failed");
+    throw ProcessLaunchError("fork failed");
   }
 
   if (pid == 0)
   {
     // In child process
+    errorPipe.closeRead();
+
     // Execute debugee
     if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
     {
       std::perror("Tracing failed");
-      throw ProcessAttachErrror("Tracing failed");
+      notifyParentThenExit(errorPipe, "Tracing failed");
     }
+
     if (execlp(path.c_str(), path.c_str(), nullptr) < 0)
     {
       std::perror("Exec failed");
-      throw ProcessAttachErrror("Exec failed");
+      notifyParentThenExit(errorPipe, "Exec failed");
     }
+  }
+
+  errorPipe.closeWrite();
+  
+  // Won't this block here?
+  auto data = errorPipe.read();
+  errorPipe.closeRead();
+
+  if (data.size() > 0)
+  {
+    std::stringstream ss;
+    ss << reinterpret_cast<char*>(data.data());
+    throw ProcessLaunchError(ss.str());
   }
 
   constexpr bool cleanupOnExit = true;

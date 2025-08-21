@@ -16,7 +16,16 @@ using ProcessUPtr = std::unique_ptr<Process>;
  * This is thrown when there's an error attaching
  * to a process.
  */
-class ProcessAttachErrror : std::runtime_error
+class ProcessAttachError : std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+/**
+ * This is thrown when there's an launching a process.
+ */
+class ProcessLaunchError : std::runtime_error
 {
 public:
   using std::runtime_error::runtime_error;
@@ -41,6 +50,9 @@ public:
   ~Process();
   static ProcessUPtr attach(pid_t pid);
   static ProcessUPtr launch(std::filesystem::path path);
+
+  Process(Process&&) = default;
+  Process& operator=(Process&&) = default;
 
   /* Resume the debugee process */
   void resume();
