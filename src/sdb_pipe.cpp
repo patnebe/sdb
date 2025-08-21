@@ -17,7 +17,8 @@ static const int EMPTY_PIPE_FD = -1;
 
 Pipe::Pipe(bool closeOnExec)
 {
-  if (auto rc = pipe2(d_fds, 0 /* O_NONBLOCK */ | (closeOnExec ? O_CLOEXEC : 0));
+  if (auto rc
+      = pipe2(d_fds, 0 /* O_NONBLOCK */ | (closeOnExec ? O_CLOEXEC : 0));
       rc < 0)
   {
     std::stringstream ss;

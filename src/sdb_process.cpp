@@ -113,7 +113,7 @@ ProcessUPtr Process::launch(std::filesystem::path path)
   }
 
   errorPipe.closeWrite();
-  
+
   // Won't this block here?
   auto data = errorPipe.read();
   errorPipe.closeRead();
