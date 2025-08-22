@@ -13,17 +13,14 @@
 
 namespace sdb
 {
-
 namespace
 {
-
 void notifyParentThenExit(Pipe& errorPipe, std::string_view errorMsg)
 {
   std::string err(errorMsg);
   errorPipe.write(reinterpret_cast<std::byte*>(err.data()), err.size());
   exit(-1);
 }
-
 } // namespace
 
 Process::Process(pid_t pid, bool cleanupOnExit, bool isBeingTraced)
