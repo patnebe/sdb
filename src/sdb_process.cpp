@@ -113,8 +113,15 @@ ProcessUPtr Process::launch(std::filesystem::path path)
   }
 
   errorPipe.closeWrite();
-
-  // Won't this block here?
+  // If there are no exec errors in the inferior
+  // closeOnExec wil cause the write end of the pipe
+  // to close, causing EOF to be returned by this
+  // call to read from the pipe. Especially becuase
+  // at this point, there should be no open file
+  // descriptors for the write end of the pipe.
+  // closeWrite() closes the parent proc's write fd,
+  // and closeOnExec has the effect of closing the
+  // child proc's write end of the pipe.
   auto data = errorPipe.read();
   errorPipe.closeRead();
 

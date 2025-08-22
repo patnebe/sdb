@@ -6,7 +6,12 @@
 namespace sdb
 {
 
-/* @brief Abstraction over an unbounded Pipe used for IPC */
+/**
+ * @brief Convenience wrapper around a Pipe
+ *
+ * See https://man7.org/linux/man-pages/man7/pipe.7.html
+ * for more details.
+ **/
 class Pipe
 {
 public:
