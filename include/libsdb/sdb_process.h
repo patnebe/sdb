@@ -16,7 +16,16 @@ using ProcessUPtr = std::unique_ptr<Process>;
  * This is thrown when there's an error attaching
  * to a process.
  */
-class ProcessAttachErrror : std::runtime_error
+class ProcessAttachError : std::runtime_error
+{
+public:
+  using std::runtime_error::runtime_error;
+};
+
+/**
+ * This is thrown when there's an error launching a process.
+ */
+class ProcessLaunchError : std::runtime_error
 {
 public:
   using std::runtime_error::runtime_error;
@@ -29,18 +38,22 @@ private:
    * Private constructor.
    * Please use the launch/attach functions below
    */
-  Process(pid_t pid, bool cleanup_on_exit);
+  Process(pid_t pid, bool cleanupOnExit, bool isBeingTraced);
 
 private:
   const pid_t d_pid;
 
   ProcessState d_state;
-  const bool d_cleanup_on_exit;
+  const bool d_cleanupOnExit;
+  const bool d_isBeingTraced;
 
 public:
   ~Process();
   static ProcessUPtr attach(pid_t pid);
-  static ProcessUPtr launch(std::filesystem::path path);
+  static ProcessUPtr launch(std::filesystem::path path, bool traceProc = true);
+
+  Process(Process&&) = default;
+  Process& operator=(Process&&) = default;
 
   /* Resume the debugee process */
   void resume();

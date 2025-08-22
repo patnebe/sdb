@@ -4,7 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/include",
-                "${workspaceFolder}/**/include"
+                "${workspaceFolder}/**/include",
+                "${workspaceFolder}/build/_deps/googletest-src/googletest/include",
+                "${workspaceFolder}/build/_deps/googletest-src/googlemock/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++",

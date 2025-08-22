@@ -1,5 +1,7 @@
 #include <libsdb/sdb_process.h>
 
+#include <libsdb/sdb_pipe.h>
+
 #include <iostream>
 #include <signal.h>
 #include <sstream>
@@ -7,12 +9,23 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <utility>
+#include <vector>
 
 namespace sdb
 {
-Process::Process(pid_t pid, bool cleanup_on_exit)
+namespace
+{
+void notifyParentThenExit(Pipe& errorPipe, std::string_view errorMsg)
+{
+  std::string err(errorMsg);
+  errorPipe.write(reinterpret_cast<std::byte*>(err.data()), err.size());
+  exit(-1);
+}
+} // namespace
+
+Process::Process(pid_t pid, bool cleanupOnExit, bool isBeingTraced)
     : d_pid(pid), d_state(ProcessState::e_STOPPED),
-      d_cleanup_on_exit(cleanup_on_exit)
+      d_cleanupOnExit(cleanupOnExit), d_isBeingTraced(isBeingTraced)
 {
 }
 
@@ -35,17 +48,20 @@ Process::~Process()
   }
 
   // Detach
-  if (auto rc
-      = ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr);
-      rc < 0)
+  if (d_isBeingTraced)
   {
-    std::cout << "Unable to detach from process, rc=" << rc << std::endl;
-    return;
+    if (auto rc
+        = ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr);
+        rc < 0)
+    {
+      std::cout << "Unable to detach from process, rc=" << rc << std::endl;
+      return;
+    }
+    kill(d_pid, SIGCONT);
   }
-  kill(d_pid, SIGCONT);
 
   // Cleanup
-  if (d_cleanup_on_exit)
+  if (d_cleanupOnExit)
   {
     kill(d_pid, SIGKILL);
     waitOnSignal();
@@ -58,42 +74,76 @@ ProcessUPtr Process::attach(pid_t pid)
   {
     const std::string err("Failed to attach to process");
     std::perror(err.c_str());
-    throw ProcessAttachErrror(err);
+    throw ProcessAttachError(err);
   }
   constexpr bool cleanupOnExit = false;
-  auto proc = std::unique_ptr<Process>(new Process(pid, cleanupOnExit));
+  auto proc = std::unique_ptr<Process>(
+    new Process(pid, cleanupOnExit, /*isBeingTraced*/ true));
   proc->waitOnSignal();
   return proc;
 }
 
-ProcessUPtr Process::launch(std::filesystem::path path)
+ProcessUPtr Process::launch(std::filesystem::path path, bool traceProc)
 {
+  Pipe errorPipe(true /* closeOnExec */);
+
   pid_t pid = 0;
   if ((pid = fork()) < 0)
   {
     std::perror("fork failed");
-    throw ProcessAttachErrror("fork failed");
+    throw ProcessLaunchError("fork failed");
   }
 
   if (pid == 0)
   {
     // In child process
-    // Execute debugee
-    if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
+    errorPipe.closeRead();
+
+    if (traceProc)
     {
-      std::perror("Tracing failed");
-      throw ProcessAttachErrror("Tracing failed");
+      if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
+      {
+        std::perror("Tracing failed");
+        notifyParentThenExit(errorPipe, "Tracing failed");
+      }
     }
+
+    // Execute debugee
     if (execlp(path.c_str(), path.c_str(), nullptr) < 0)
     {
       std::perror("Exec failed");
-      throw ProcessAttachErrror("Exec failed");
+      notifyParentThenExit(errorPipe, "Exec failed");
     }
   }
 
+  errorPipe.closeWrite();
+  // If there are no exec errors in the inferior
+  // closeOnExec wil cause the write end of the pipe
+  // to close, causing EOF to be returned by this
+  // call to read from the pipe. Especially becuase
+  // at this point, there should be no open file
+  // descriptors for the write end of the pipe.
+  // closeWrite() closes the parent proc's write fd,
+  // and closeOnExec has the effect of closing the
+  // child proc's write end of the pipe.
+  auto data = errorPipe.read();
+  errorPipe.closeRead();
+
+  if (data.size() > 0)
+  {
+    std::stringstream ss;
+    ss << reinterpret_cast<char*>(data.data());
+    throw ProcessLaunchError(ss.str());
+  }
+
   constexpr bool cleanupOnExit = true;
-  auto proc = std::unique_ptr<Process>(new Process(pid, cleanupOnExit));
-  proc->waitOnSignal();
+  auto proc
+    = std::unique_ptr<Process>(new Process(pid, cleanupOnExit, traceProc));
+
+  if (traceProc)
+  {
+    proc->waitOnSignal();
+  }
   return proc;
 }
 
