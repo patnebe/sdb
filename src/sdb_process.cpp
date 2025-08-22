@@ -26,9 +26,9 @@ void notifyParentThenExit(Pipe& errorPipe, std::string_view errorMsg)
 
 } // namespace
 
-Process::Process(pid_t pid, bool cleanup_on_exit)
+Process::Process(pid_t pid, bool cleanupOnExit, bool isBeingTraced)
     : d_pid(pid), d_state(ProcessState::e_STOPPED),
-      d_cleanup_on_exit(cleanup_on_exit)
+      d_cleanupOnExit(cleanupOnExit), d_isBeingTraced(isBeingTraced)
 {
 }
 
@@ -51,17 +51,20 @@ Process::~Process()
   }
 
   // Detach
-  if (auto rc
-      = ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr);
-      rc < 0)
+  if (d_isBeingTraced)
   {
-    std::cout << "Unable to detach from process, rc=" << rc << std::endl;
-    return;
+    if (auto rc
+        = ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr);
+        rc < 0)
+    {
+      std::cout << "Unable to detach from process, rc=" << rc << std::endl;
+      return;
+    }
+    kill(d_pid, SIGCONT);
   }
-  kill(d_pid, SIGCONT);
 
   // Cleanup
-  if (d_cleanup_on_exit)
+  if (d_cleanupOnExit)
   {
     kill(d_pid, SIGKILL);
     waitOnSignal();
@@ -77,12 +80,13 @@ ProcessUPtr Process::attach(pid_t pid)
     throw ProcessAttachError(err);
   }
   constexpr bool cleanupOnExit = false;
-  auto proc = std::unique_ptr<Process>(new Process(pid, cleanupOnExit));
+  auto proc = std::unique_ptr<Process>(
+    new Process(pid, cleanupOnExit, /*isBeingTraced*/ true));
   proc->waitOnSignal();
   return proc;
 }
 
-ProcessUPtr Process::launch(std::filesystem::path path)
+ProcessUPtr Process::launch(std::filesystem::path path, bool traceProc)
 {
   Pipe errorPipe(true /* closeOnExec */);
 
@@ -98,13 +102,16 @@ ProcessUPtr Process::launch(std::filesystem::path path)
     // In child process
     errorPipe.closeRead();
 
-    // Execute debugee
-    if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
+    if (traceProc)
     {
-      std::perror("Tracing failed");
-      notifyParentThenExit(errorPipe, "Tracing failed");
+      if (ptrace(PTRACE_TRACEME, 0, nullptr, nullptr) < 0)
+      {
+        std::perror("Tracing failed");
+        notifyParentThenExit(errorPipe, "Tracing failed");
+      }
     }
 
+    // Execute debugee
     if (execlp(path.c_str(), path.c_str(), nullptr) < 0)
     {
       std::perror("Exec failed");
@@ -133,8 +140,13 @@ ProcessUPtr Process::launch(std::filesystem::path path)
   }
 
   constexpr bool cleanupOnExit = true;
-  auto proc = std::unique_ptr<Process>(new Process(pid, cleanupOnExit));
-  proc->waitOnSignal();
+  auto proc
+    = std::unique_ptr<Process>(new Process(pid, cleanupOnExit, traceProc));
+
+  if (traceProc)
+  {
+    proc->waitOnSignal();
+  }
   return proc;
 }
 

@@ -71,7 +71,10 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "csignal": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "any": "cpp",
+        "forward_list": "cpp",
+        "unordered_set": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }

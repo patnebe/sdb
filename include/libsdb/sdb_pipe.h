@@ -36,7 +36,7 @@ private:
   int d_fds[2];
 
 private:
-  Pipe(Pipe&) = delete;
+  Pipe(const Pipe&) = delete;
   Pipe& operator=(const Pipe&) = delete;
 
   Pipe(Pipe&&) = delete;
