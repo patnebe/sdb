@@ -18,9 +18,6 @@ public:
   explicit Pipe(bool closeOnExec);
   ~Pipe();
 
-  Pipe(Pipe&&) = default;
-  Pipe& operator=(const Pipe&) = default;
-
   int getRead() const;
   int getWrite() const;
 
@@ -40,6 +37,9 @@ private:
 
 private:
   Pipe(Pipe&) = delete;
+  Pipe& operator=(const Pipe&) = delete;
+
+  Pipe(Pipe&&) = delete;
   Pipe& operator=(Pipe&&) = delete;
 };
 
