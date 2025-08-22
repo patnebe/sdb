@@ -37,6 +37,8 @@ char getProcessStatus(int pid)
   // File names can contains spaces and parenthesis
   // But we can assume the contents of the stat file will
   // be in the format: 1 (systemd) S 0 1 1 0 -1 4194560 1403003 88311080 ...
+  // i.e the proc state is the third field
+  // See https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html
   std::string buf;
   std::getline(ifs, buf);
   const auto idxOfLastParen = buf.rfind(')');
