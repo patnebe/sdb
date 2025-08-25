@@ -29,6 +29,31 @@ Process::Process(pid_t pid, bool cleanupOnExit, bool isBeingTraced)
 {
 }
 
+Process::Process(Process&& other)
+    : d_pid(other.d_pid), d_state(other.d_state),
+      d_cleanupOnExit(other.d_cleanupOnExit),
+      d_isBeingTraced(other.d_isBeingTraced)
+{
+  // Ensure the underlying process is not cleaned
+  // when the object moved out of is destructed
+  other.d_pid = 0;
+  other.d_cleanupOnExit = false;
+}
+
+Process& Process::operator=(Process&& other)
+{
+  d_pid = other.d_pid;
+  d_state = other.d_state;
+  d_cleanupOnExit = other.d_cleanupOnExit;
+  d_isBeingTraced = other.d_isBeingTraced;
+
+  // Ensure the underlying process is not cleaned
+  // when the object moved out of is destructed
+  other.d_pid = 0;
+  other.d_cleanupOnExit = false;
+  return *this;
+}
+
 Process::~Process()
 {
   if (d_pid == 0)
@@ -41,15 +66,15 @@ Process::~Process()
     return;
   }
 
-  if (d_state == ProcessState::e_RUNNING)
-  {
-    kill(d_pid, SIGSTOP);
-    waitOnSignal();
-  }
-
-  // Detach
   if (d_isBeingTraced)
   {
+    if (d_state == ProcessState::e_RUNNING)
+    {
+      kill(d_pid, SIGSTOP);
+      waitOnSignal();
+    }
+
+    // Detach
     if (auto rc
         = ptrace(PTRACE_DETACH, d_pid, /*addr=*/nullptr, /*data=*/nullptr);
         rc < 0)
@@ -57,6 +82,7 @@ Process::~Process()
       std::cout << "Unable to detach from process, rc=" << rc << std::endl;
       return;
     }
+
     kill(d_pid, SIGCONT);
   }
 
@@ -157,11 +183,13 @@ void Process::resume()
     case ProcessState::e_STOPPED:
       if (int rc = ptrace(PTRACE_CONT, d_pid, nullptr, nullptr); rc < 0)
       {
-        std::cerr << "Unable to continue, rc=" << rc << std::endl;
+        std::cerr << "Unable to continue proc with pid=" << d_pid
+                  << ", rc=" << rc << std::endl;
+        perror("");
         std::exit(-1);
       }
       d_state = ProcessState::e_RUNNING;
-      waitOnSignal();
+      // waitOnSignal();
       break;
     default:
       std::cout << "Inferior process is not running" << std::endl;

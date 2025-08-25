@@ -15,6 +15,8 @@ enum struct ProcessState
   e_TERMINATED
 };
 
+std::ostream& operator<<(std::ostream& os, ProcessState state);
+
 } // sdb
 
 #endif

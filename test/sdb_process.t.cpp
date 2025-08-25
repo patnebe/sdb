@@ -1,10 +1,13 @@
 #include <libsdb/sdb_process.h>
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <signal.h>
 #include <sstream>
 #include <string>
+#include <thread>
+#include <utility>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -15,6 +18,7 @@ namespace
 {
 
 using namespace testing;
+using namespace std::chrono_literals;
 
 bool processExists(int pid)
 {
@@ -45,6 +49,12 @@ char getProcessStatus(int pid)
   const auto idxOfProcStatus = idxOfLastParen + 2;
   return buf[idxOfProcStatus];
 }
+
+const auto processInTracingStoppedStatus
+  = [](int pid) { return getProcessStatus(pid) == 't'; };
+
+const auto processInRunningStatus
+  = [](int pid) { return getProcessStatus(pid) == 'R'; };
 } // namespace
 
 TEST(ProcessTest, processLaunchedSuccessfully)
@@ -69,7 +79,9 @@ TEST(ProcessTest, launchNonExistentProgram)
 TEST(ProcessTest, attachToProcess)
 {
   // Given
-  const std::filesystem::path procname{ "ls" };
+  const std::filesystem::path procname{ "./testbin.tsk" };
+  // Don't trace the process on launch
+  // since we'll attach to it below
   const auto proc = Process::launch(procname, /*traceProc*/ false);
   ASSERT_THAT(proc, NotNull());
 
@@ -78,10 +90,35 @@ TEST(ProcessTest, attachToProcess)
 
   // Then
   ASSERT_EQ(proc->pid(), attachedProc->pid());
-  auto processInTracingStoppedStatus
-    = [](int pid) { return getProcessStatus(pid) == 't'; };
-
   ASSERT_TRUE(processInTracingStoppedStatus(attachedProc->pid()));
+}
+
+TEST(ProcessTest, attachToInvalidPid)
+{
+  // Given / When / Then
+  EXPECT_THROW(Process::attach(0), ProcessAttachError);
+}
+
+TEST(ProcessTest, resumeAProcess)
+{
+  // Given
+  auto proc = Process::launch("./testbin.tsk");
+  ASSERT_THAT(proc, NotNull());
+  const auto pid = proc->pid();
+  ASSERT_TRUE(processInTracingStoppedStatus(pid));
+  const auto procState = proc->state();
+  ASSERT_EQ(procState, ProcessState::e_STOPPED)
+    << "unexpected proc state=" << procState;
+
+  // When
+  // TODO: Understand why this fails with the following
+  // error when I move it to a different thread::
+  // Unable to continue proc with pid=137233, rc=-1
+  // No such process
+  proc->resume();
+
+  // Then
+  ASSERT_TRUE(processInRunningStatus(pid));
 }
 
 } // namespace sdb
