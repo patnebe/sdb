@@ -1,13 +1,11 @@
 #include <libsdb/sdb_process.h>
 
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <signal.h>
 #include <sstream>
 #include <string>
 #include <thread>
-#include <utility>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -18,7 +16,6 @@ namespace
 {
 
 using namespace testing;
-using namespace std::chrono_literals;
 
 bool processExists(int pid)
 {

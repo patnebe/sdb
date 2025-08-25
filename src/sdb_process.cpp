@@ -8,7 +8,6 @@
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <utility>
 #include <vector>
 
 namespace sdb
