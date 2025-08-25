@@ -19,3 +19,5 @@ target_link_libraries(sdb.u.t
 
 include(GoogleTest)
 gtest_discover_tests(sdb.u.t)
+
+add_executable(testbin.tsk testbin.m.cpp)

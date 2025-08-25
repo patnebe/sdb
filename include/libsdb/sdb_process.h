@@ -41,19 +41,18 @@ private:
   Process(pid_t pid, bool cleanupOnExit, bool isBeingTraced);
 
 private:
-  const pid_t d_pid;
-
+  pid_t d_pid;
   ProcessState d_state;
-  const bool d_cleanupOnExit;
-  const bool d_isBeingTraced;
+  bool d_cleanupOnExit;
+  bool d_isBeingTraced;
 
 public:
   ~Process();
   static ProcessUPtr attach(pid_t pid);
   static ProcessUPtr launch(std::filesystem::path path, bool traceProc = true);
 
-  Process(Process&&) = default;
-  Process& operator=(Process&&) = default;
+  Process(Process&&);
+  Process& operator=(Process&&);
 
   /* Resume the debugee process */
   void resume();
