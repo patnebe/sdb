@@ -183,9 +183,10 @@ void Process::resume()
     case ProcessState::e_STOPPED:
       if (int rc = ptrace(PTRACE_CONT, d_pid, nullptr, nullptr); rc < 0)
       {
-        std::cerr << "Unable to continue proc with pid=" << d_pid
-                  << ", rc=" << rc << std::endl;
-        perror("");
+        std::stringstream ss;
+        ss << "Unable to continue proc with pid=" << d_pid << ", rc=" << rc
+           << ". perror=";
+        perror(ss.str().c_str());
         std::exit(-1);
       }
       d_state = ProcessState::e_RUNNING;
