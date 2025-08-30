@@ -33,7 +33,7 @@ CommandType parseCommandType(const std::string& commandTypeStr)
 }
 }
 
-Command::Command(CommandType commandType,
+Command::Command(CommandType                commandType,
                  std::vector<std::string>&& commandArgs)
     : d_type(commandType), d_commandArgs(std::move(commandArgs))
 {
@@ -47,7 +47,7 @@ Command Command::parse(std::string_view commandStr)
   }
 
   static const std::string delimiter(" ");
-  auto args = StringUtil::split(commandStr, delimiter);
+  auto                     args = StringUtil::split(commandStr, delimiter);
 
   const auto commandType = parseCommandType(args[0]);
   return Command(commandType, std::move(args));

@@ -107,7 +107,7 @@ ProcessUPtr Process::attach(pid_t pid)
     throw ProcessAttachError(err);
   }
   constexpr bool cleanupOnExit = false;
-  auto proc = std::unique_ptr<Process>(
+  auto           proc = std::unique_ptr<Process>(
     new Process(pid, cleanupOnExit, /*isBeingTraced*/ true));
   proc->waitOnSignal();
   return proc;
@@ -167,7 +167,7 @@ ProcessUPtr Process::launch(std::filesystem::path path, bool traceProc)
   }
 
   constexpr bool cleanupOnExit = true;
-  auto proc
+  auto           proc
     = std::unique_ptr<Process>(new Process(pid, cleanupOnExit, traceProc));
 
   if (traceProc)

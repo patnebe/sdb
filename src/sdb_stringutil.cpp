@@ -13,11 +13,11 @@ StringUtil::split(const std::string_view input, const std::string& delimiter)
   }
 
   std::vector<std::string> result;
-  size_t nextTokenStart = 0;
-  size_t delim_len = delimiter.size();
+  size_t                   nextTokenStart = 0;
+  size_t                   delim_len = delimiter.size();
 
   const std::string inputStr(input);
-  size_t end = inputStr.size();
+  size_t            end = inputStr.size();
 
   while (nextTokenStart < end)
   {
