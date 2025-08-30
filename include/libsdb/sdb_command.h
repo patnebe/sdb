@@ -24,7 +24,7 @@ enum class CommandType
 
 struct Command
 {
-  CommandType d_type;
+  CommandType              d_type;
   std::vector<std::string> d_commandArgs;
 
   Command(CommandType commandType, std::vector<std::string>&& commandArgs);

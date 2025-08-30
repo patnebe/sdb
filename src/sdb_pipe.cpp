@@ -4,6 +4,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <sys/user.h>
 #include <unistd.h>
 #include <utility>
 
@@ -61,7 +62,7 @@ void Pipe::closeWrite()
 std::vector<std::byte> Pipe::read()
 {
   constexpr int numBytesToRead = 1024;
-  std::byte buff[numBytesToRead];
+  std::byte     buff[numBytesToRead];
   if (auto numBytesRead
       = ::read(getRead(), static_cast<void*>(buff), numBytesToRead);
       numBytesRead > -1)

@@ -41,10 +41,10 @@ private:
   Process(pid_t pid, bool cleanupOnExit, bool isBeingTraced);
 
 private:
-  pid_t d_pid;
+  pid_t        d_pid;
   ProcessState d_state;
-  bool d_cleanupOnExit;
-  bool d_isBeingTraced;
+  bool         d_cleanupOnExit;
+  bool         d_isBeingTraced;
 
 public:
   ~Process();
@@ -65,9 +65,9 @@ public:
    */
   void waitOnSignal();
 
-  pid_t pid() const;
+  pid_t        pid() const;
   ProcessState state() const;
-  bool isAlive() const;
+  bool         isAlive() const;
 
 private:
   Process() = delete;

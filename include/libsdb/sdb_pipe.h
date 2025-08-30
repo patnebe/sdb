@@ -28,12 +28,12 @@ public:
   void closeWrite();
 
   std::vector<std::byte> read();
-  void write(std::byte* source, std::size_t numBytes);
+  void                   write(std::byte* source, std::size_t numBytes);
 
 private:
   static const unsigned d_readFdIdx = 0;
   static const unsigned d_writeFdIdx = 1;
-  int d_fds[2];
+  int                   d_fds[2];
 
 private:
   Pipe(const Pipe&) = delete;

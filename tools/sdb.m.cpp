@@ -33,7 +33,7 @@ ProcessUPtr attach_to_running_proc(const char** argv)
 
 ProcessUPtr launch_new_proc_and_attach(const char** argv)
 {
-  const char* program_path = argv[1];
+  const char*                 program_path = argv[1];
   const std::filesystem::path path(program_path);
 
   return Process::launch(path);

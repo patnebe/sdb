@@ -1,4 +1,5 @@
 BasedOnStyle:  GNU
+AlignConsecutiveDeclarations: true
 AlignAfterOpenBracket: Align
 AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortBlocksOnASingleLine: false
