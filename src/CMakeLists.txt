@@ -4,6 +4,7 @@ add_library(
     sdb_pipe.cpp
     sdb_process.cpp
     sdb_process_state.cpp
+    sdb_register_info.cpp
     sdb_stringutil.cpp
 )
 
