@@ -110,10 +110,57 @@ DEFINE_GPR_8L(r13b, r13),
 DEFINE_GPR_8L(r14b, r14),
 DEFINE_GPR_8L(r15b, r15),
 
-#define FPR_OFFSET(reg) (offsetof(user, i3987) + offsetof(user_fpregs_strut, reg))
+
+// Define the Floating Point Registers
+#define FPR_OFFSET(reg) (offsetof(user, i387) + offsetof(user_fpregs_struct, reg))
 #define FPR_SIZE(reg) (sizeof(user_fpregs_struct::reg))
 
 #define DEFINE_FPR(name,dwarf_id,user_name) \
-    DEFINE_REGISTER(name, dwarf_id, 8, FPR_SIZE(user_name), FPR_OFSET(user_name),\
+    DEFINE_REGISTER(name, dwarf_id, FPR_SIZE(user_name), FPR_OFFSET(user_name),\
     RegisterType::e_FPR, RegisterFormat::e_UINT)
 
+#define DEFINE_FP_ST(number) \
+    DEFINE_REGISTER(st ## number, (33 + number), 16,\
+    (FPR_OFFSET(st_space) + number*16), RegisterType::e_FPR,\
+    RegisterFormat::e_LONG_DOUBLE)
+
+
+#define DEFINE_FP_MM(number) \
+    DEFINE_REGISTER(mm ## number, (41 + number), 8,\
+    (FPR_OFFSET(st_space) + number*16), RegisterType::e_FPR,\
+    RegisterFormat::e_VECTOR)
+
+#define DEFINE_FP_XMM(number) \
+    DEFINE_REGISTER(xmm ## number, (17 + number), 16,\
+    (FPR_OFFSET(xmm_space) + number * 16), RegisterType::e_FPR,\
+    RegisterFormat::e_VECTOR)
+
+DEFINE_FPR(fcw, 65, cwd),
+DEFINE_FPR(fsw, 66, swd),
+DEFINE_FPR(ftw, -1, ftw),
+DEFINE_FPR(fop, -1, fop),
+DEFINE_FPR(frip, -1, rip),
+DEFINE_FPR(frdp, -1, rdp),
+DEFINE_FPR(mxcsr, 64, mxcsr),
+DEFINE_FPR(mxcsrmask, -1, mxcr_mask),
+
+DEFINE_FP_ST(0), DEFINE_FP_ST(1), DEFINE_FP_ST(2), DEFINE_FP_ST(3),
+DEFINE_FP_ST(4), DEFINE_FP_ST(5), DEFINE_FP_ST(6), DEFINE_FP_ST(7),
+
+DEFINE_FP_MM(0), DEFINE_FP_MM(1), DEFINE_FP_MM(2), DEFINE_FP_MM(3),
+DEFINE_FP_MM(4), DEFINE_FP_MM(5), DEFINE_FP_MM(6), DEFINE_FP_MM(7),
+
+DEFINE_FP_XMM(0), DEFINE_FP_XMM(1), DEFINE_FP_XMM(2), DEFINE_FP_XMM(3),
+DEFINE_FP_XMM(4), DEFINE_FP_XMM(5), DEFINE_FP_XMM(6), DEFINE_FP_XMM(7),
+DEFINE_FP_XMM(8), DEFINE_FP_XMM(9), DEFINE_FP_XMM(10), DEFINE_FP_XMM(11),
+DEFINE_FP_XMM(12), DEFINE_FP_XMM(13), DEFINE_FP_XMM(14), DEFINE_FP_XMM(15),
+
+
+// Define the debug registers
+#define DR_OFFSET(number) (offsetof(user, u_debugreg) + number * 8)
+#define DEFINE_DR(number) \
+    DEFINE_REGISTER(dr ##number, -1, 8, DR_OFFSET(number), \
+    RegisterType::e_DR, RegisterFormat::e_UINT)
+
+DEFINE_DR(0), DEFINE_DR(1), DEFINE_DR(2), DEFINE_DR(3),
+DEFINE_DR(4), DEFINE_DR(5), DEFINE_DR(6), DEFINE_DR(7)
